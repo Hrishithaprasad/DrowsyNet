@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DrowsyNet — Driver Drowsiness Detection</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg          : #04040f;
+  --surface     : #0c0c1e;
+  --surface2    : #111128;
+  --border      : rgba(255,255,255,0.07);
+  --accent      : #00e5ff;
+  --accent2     : #7c3aed;
+  --alert-color : #00e676;
+  --drowsy-color: #ff3d57;
+  --text        : #e8e8f0;
+  --muted       : #6b6b8a;
+  --card-radius : 20px;
+}
+html { scroll-behavior: smooth; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background: radial-gradient(ellipse 80% 50% at 10% 10%, rgba(0,229,255,0.05) 0%, transparent 60%),
+              radial-gradient(ellipse 60% 40% at 90% 80%, rgba(124,58,237,0.06) 0%, transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+body::after {
+  content: ''; position: fixed; inset: 0;
+  background-image: linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
+  background-size: 48px 48px; pointer-events: none; z-index: 0;
+}
+.page-wrap { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 0 28px 80px; }
+
+/* Header */
+header { display: flex; align-items: center; justify-content: space-between; padding: 32px 0 40px; border-bottom: 1px solid var(--border); margin-bottom: 32px; }
+.logo { display: flex; align-items: center; gap: 14px; }
+.logo-icon { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 0 24px rgba(0,229,255,0.3); }
+.logo-text h1 { font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 800; color: #fff; line-height: 1.1; }
+.logo-text p { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.student-tag { text-align: right; font-size: 0.75rem; color: var(--muted); line-height: 1.8; }
+.student-tag span { display: block; color: var(--accent); font-family: 'Syne', sans-serif; font-weight: 600; font-size: 0.8rem; }
+
+/* Cards */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--card-radius); padding: 28px; transition: border-color 0.3s; }
+.card:hover { border-color: rgba(0,229,255,0.15); }
+.card-label { font-size: 0.68rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+.card-label::before { content: ''; display: inline-block; width: 18px; height: 2px; background: var(--accent); border-radius: 2px; }
+
+/* Model selector */
+.model-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.model-card { border: 1px solid var(--border); border-radius: 12px; padding: 14px; cursor: pointer; transition: all 0.2s; position: relative; background: var(--surface2); }
+.model-card:hover { border-color: rgba(0,229,255,0.3); }
+.model-card.selected { border-color: var(--accent); background: rgba(0,229,255,0.07); box-shadow: inset 0 0 0 1px rgba(0,229,255,0.2); }
+.model-card input[type=radio] { display: none; }
+.model-card-name { font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.model-card-type { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 6px; }
+.model-card-acc { font-size: 0.78rem; color: var(--muted); }
+.model-card-acc strong { color: var(--alert-color); font-weight: 600; }
+.model-check { position: absolute; top: 10px; right: 10px; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 10px; color: transparent; transition: all 0.2s; }
+.model-card.selected .model-check { background: var(--accent); border-color: var(--accent); color: #000; }
+
+/* Stats table */
+.stats-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.82rem; }
+.stats-table th { text-align: left; padding: 10px 14px; color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid var(--border); }
+.stats-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.stats-table tr:last-child td { border-bottom: none; }
+.stats-table tr:hover td { background: rgba(255,255,255,0.02); }
+.badge-pill { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 0.68rem; }
+.badge-custom   { background: rgba(124,58,237,0.2); color: #c084fc; }
+.badge-transfer { background: rgba(0,229,255,0.12); color: var(--accent); }
+.acc-best { color: var(--alert-color); font-weight: 600; }
+.acc-good { color: #ffd740; font-weight: 500; }
+
+/* Webcam layout */
+.webcam-layout { display: grid; grid-template-columns: 1fr 360px; gap: 24px; align-items: start; }
+.webcam-feed-wrap { background: #000; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); position: relative; aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; }
+.webcam-feed-wrap img { width: 100%; height: 100%; object-fit: cover; display: none; }
+.webcam-placeholder { text-align: center; color: var(--muted); position: absolute; }
+.webcam-placeholder .ph-icon { font-size: 4rem; display: block; margin-bottom: 12px; opacity: 0.3; }
+.webcam-placeholder p { font-size: 0.85rem; }
+.webcam-controls { display: flex; flex-direction: column; gap: 16px; }
+.webcam-btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.25s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.webcam-btn.start { background: linear-gradient(135deg, var(--alert-color), #00b0ff); color: #000; box-shadow: 0 4px 24px rgba(0,230,118,0.25); }
+.webcam-btn.start:hover { transform: translateY(-2px); }
+.webcam-btn.stop  { background: linear-gradient(135deg, var(--drowsy-color), #ff6b35); color: #fff; box-shadow: 0 4px 24px rgba(255,61,87,0.25); }
+.webcam-btn.stop:hover { transform: translateY(-2px); }
+
+/* Live status */
+.live-status { background: var(--surface2); border: 1px solid var(--border); border-radius: 16px; padding: 24px; text-align: center; }
+.live-badge { font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800; padding: 16px 28px; border-radius: 50px; margin-bottom: 20px; display: inline-block; transition: all 0.3s; }
+.live-badge.alert  { background: rgba(0,230,118,0.15); color: var(--alert-color); border: 2px solid rgba(0,230,118,0.3); }
+.live-badge.drowsy { background: rgba(255,61,87,0.15); color: var(--drowsy-color); border: 2px solid rgba(255,61,87,0.3); animation: alertPulse 0.8s ease-in-out infinite; }
+.live-badge.waiting { background: rgba(255,255,255,0.05); color: var(--muted); border: 2px solid var(--border); font-size: 1rem; }
+@keyframes alertPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,61,87,0.4); } 50% { box-shadow: 0 0 0 12px rgba(255,61,87,0); } }
+.live-bars { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.live-bar-row label { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 5px; }
+.live-bar-track { height: 6px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; }
+.live-bar-fill { height: 100%; border-radius: 99px; transition: width 0.4s ease; width: 0%; }
+.live-bar-fill.alert  { background: linear-gradient(90deg, #00e676, #00b0ff); }
+.live-bar-fill.drowsy { background: linear-gradient(90deg, #ff3d57, #ff6b35); }
+
+/* Alarm toggle */
+.alarm-toggle { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; padding: 12px 16px; background: rgba(255,255,255,0.04); border-radius: 10px; border: 1px solid var(--border); }
+.alarm-toggle label { font-size: 0.82rem; color: var(--text); cursor: pointer; }
+.toggle-switch { position: relative; width: 40px; height: 22px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: rgba(255,255,255,0.1); border-radius: 99px; cursor: pointer; transition: 0.3s; }
+.toggle-slider::before { content: ''; position: absolute; width: 16px; height: 16px; border-radius: 50%; left: 3px; bottom: 3px; background: var(--muted); transition: 0.3s; }
+.toggle-switch input:checked + .toggle-slider { background: rgba(255,61,87,0.4); }
+.toggle-switch input:checked + .toggle-slider::before { transform: translateX(18px); background: var(--drowsy-color); }
+
+/* Current model display */
+.current-model-info { font-size: 0.78rem; color: var(--muted); text-align: center; margin-top: 4px; line-height: 1.6; }
+.current-model-info strong { color: var(--accent); }
+
+/* Toast */
+.toast { position: fixed; bottom: 28px; right: 28px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--drowsy-color); border-radius: 10px; padding: 14px 20px; font-size: 0.82rem; color: var(--text); opacity: 0; transform: translateY(20px); transition: all 0.3s; z-index: 999; max-width: 320px; }
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.success { border-left-color: var(--alert-color); }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+@media (max-width: 900px) { .webcam-layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🚗</div>
+      <div class="logo-text">
+        <h1>DrowsyNet</h1>
+        <p>Driver Drowsiness Detection System</p>
+      </div>
+    </div>
+    <div class="student-tag">
+      <span>Hrishitha Prasad A S</span>
+      1NT23AD022 &nbsp;·&nbsp; ANN &amp; DL + DIP &amp; CV
+    </div>
+  </header>
+
+  <!-- WEBCAM LAYOUT -->
+  <div class="webcam-layout">
+
+    <!-- LEFT: Feed -->
+    <div>
+      <div class="webcam-feed-wrap" id="webcam-wrap">
+        <div class="webcam-placeholder" id="webcam-placeholder">
+          <span class="ph-icon">📷</span>
+          <p>Select a model and click<br><strong style="color:var(--accent)">Start Webcam</strong> to begin</p>
+        </div>
+        <img id="webcam-img" src="" alt="webcam feed">
+      </div>
+
+      <!-- Stats table below feed -->
+      <div class="card" style="margin-top:20px;">
+        <div class="card-label">All Models — Performance Comparison</div>
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th>Model</th><th>Type</th><th>Accuracy</th>
+              <th>F1-Score</th><th>ROC-AUC</th><th>Parameters</th>
+            </tr>
+          </thead>
+          <tbody id="stats-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RIGHT: Controls -->
+    <div class="webcam-controls">
+
+      <!-- Model selector -->
+      <div class="card">
+        <div class="card-label">Select Model</div>
+        <div class="model-grid" id="model-grid"></div>
+        <div class="current-model-info" id="current-model-info" style="margin-top:12px;">
+          Selected: <strong id="selected-model-name">ResNet50V2</strong>
+        </div>
+      </div>
+
+      <!-- Start / Stop -->
+      <button class="webcam-btn start" id="webcam-start-btn" onclick="startWebcam()">
+        📷 &nbsp;Start Webcam
+      </button>
+      <button class="webcam-btn stop" id="webcam-stop-btn" onclick="stopWebcam()" style="display:none;">
+        ⏹ &nbsp;Stop Webcam
+      </button>
+
+      <!-- Live status -->
+      <div class="live-status">
+        <div class="card-label" style="justify-content:center;">Live Detection</div>
+        <div class="live-badge waiting" id="live-badge">WAITING</div>
+        <div class="live-bars">
+          <div class="live-bar-row">
+            <label><span>🟢 Alert</span><span id="live-alert-pct">—</span></label>
+            <div class="live-bar-track"><div class="live-bar-fill alert" id="live-bar-alert"></div></div>
+          </div>
+          <div class="live-bar-row">
+            <label><span>🔴 Drowsy</span><span id="live-drowsy-pct">—</span></label>
+            <div class="live-bar-track"><div class="live-bar-fill drowsy" id="live-bar-drowsy"></div></div>
+          </div>
+        </div>
+        <div class="alarm-toggle">
+          <label for="alarm-toggle">🔔 &nbsp;Drowsy Alarm</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="alarm-toggle" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Flask data ──────────────────────────────────────────────────
+const MODEL_INFO    = {{ model_info | safe }};
+const LOADED_MODELS = {{ loaded_models | safe }};
+
+// ── Audio alarm ─────────────────────────────────────────────────
+let audioCtx      = null;
+let alarmInterval = null;
+let alarmPlaying  = false;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function playBeep() {
+  try {
+    const ctx  = getAudioCtx();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 880; osc.type = 'sine';
+    gain.gain.setValueAtTime(0.6, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+  } catch(e) {}
+}
+function startAlarm() {
+  if (alarmPlaying) return;
+  alarmPlaying  = true;
+  playBeep();
+  alarmInterval = setInterval(playBeep, 800);
+}
+function stopAlarm() {
+  alarmPlaying = false;
+  if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; }
+}
+
+// ── Selected model tracking ─────────────────────────────────────
+let selectedModel = LOADED_MODELS[0] || 'ResNet50V2';
+
+// ── Build model cards ───────────────────────────────────────────
+function buildModelGrid() {
+  const grid  = document.getElementById('model-grid');
+  const order = ['ResNet50V2', 'MobileNetV2', 'VGG16', 'DrowsyNet'];
+  order.forEach(name => {
+    const meta     = MODEL_INFO[name];
+    if (!meta) return;
+    const isLoaded = LOADED_MODELS.includes(name);
+    const card     = document.createElement('label');
+    card.className = 'model-card' + (isLoaded ? '' : ' disabled');
+    card.dataset.model = name;
+    card.innerHTML = `
+      <input type="radio" name="model" value="${name}" ${!isLoaded ? 'disabled' : ''}>
+      <div class="model-card-name">${name}</div>
+      <div class="model-card-type">${meta.type}</div>
+      <div class="model-card-acc">Acc: <strong>${meta.accuracy}</strong></div>
+      <div class="model-card-acc" style="color:var(--muted);font-size:0.65rem;margin-top:3px;">${meta.params} params</div>
+      <div class="model-check">✓</div>
+    `;
+    if (!isLoaded) { card.style.opacity = '0.4'; card.style.cursor = 'not-allowed'; }
+    card.addEventListener('click', () => {
+      if (!isLoaded) return;
+      document.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedModel = name;
+      document.getElementById('selected-model-name').textContent = name;
+    });
+    grid.appendChild(card);
+  });
+  // Auto-select first loaded model
+  const first = grid.querySelector('.model-card:not([style*="opacity"])');
+  if (first) first.click();
+}
+
+// ── Build stats table ───────────────────────────────────────────
+function buildStatsTable() {
+  const tbody = document.getElementById('stats-tbody');
+  const order = ['ResNet50V2', 'MobileNetV2', 'VGG16', 'DrowsyNet'];
+  order.forEach((name, i) => {
+    const m       = MODEL_INFO[name];
+    if (!m) return;
+    const isCustom = name === 'DrowsyNet';
+    const isBest   = name === 'ResNet50V2';
+    const tr = document.createElement('tr');
+    if (isBest) tr.style.outline = '1.5px solid rgba(0,229,255,0.3)';
+    tr.innerHTML = `
+      <td style="font-family:'Syne',sans-serif;font-weight:700;">${name}${isBest ? ' 🏆' : ''}</td>
+      <td><span class="badge-pill ${isCustom ? 'badge-custom' : 'badge-transfer'}">${isCustom ? 'Custom' : 'Transfer'}</span></td>
+      <td class="${isBest ? 'acc-best' : i === 1 ? 'acc-good' : ''}">${m.accuracy}</td>
+      <td>${m.f1}</td>
+      <td>${m.auc}</td>
+      <td style="font-size:0.75rem;color:var(--muted);">${m.params}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── Webcam ──────────────────────────────────────────────────────
+let webcamRunning    = false;
+let statusInterval   = null;
+let drowsyFrameCount = 0;
+const ALARM_THRESHOLD = 3;
+
+function startWebcam() {
+  // Unlock audio context on user click
+  try { getAudioCtx().resume(); } catch(e) {}
+
+  webcamRunning    = true;
+  drowsyFrameCount = 0;
+
+  const img = document.getElementById('webcam-img');
+  img.src   = '/webcam/feed?model=' + selectedModel;
+  img.style.display = 'block';
+
+  document.getElementById('webcam-placeholder').style.display = 'none';
+  document.getElementById('webcam-start-btn').style.display   = 'none';
+  document.getElementById('webcam-stop-btn').style.display    = 'block';
+
+  showToast('📷 Webcam started with ' + selectedModel, 'success');
+
+  // Poll status every 500ms to update bars + badge + alarm
+  statusInterval = setInterval(updateLiveStatus, 500);
+}
+
+function stopWebcam() {
+  webcamRunning = false;
+  stopAlarm();
+  if (statusInterval) { clearInterval(statusInterval); statusInterval = null; }
+  fetch('/webcam/stop', { method: 'POST' }).catch(() => {});
+
+  const img = document.getElementById('webcam-img');
+  img.src = ''; img.style.display = 'none';
+
+  document.getElementById('webcam-placeholder').style.display = 'block';
+  document.getElementById('webcam-start-btn').style.display   = 'block';
+  document.getElementById('webcam-stop-btn').style.display    = 'none';
+
+  // Reset UI
+  const badge = document.getElementById('live-badge');
+  badge.className = 'live-badge waiting';
+  badge.textContent = 'WAITING';
+  document.getElementById('live-alert-pct').textContent  = '—';
+  document.getElementById('live-drowsy-pct').textContent = '—';
+  document.getElementById('live-bar-alert').style.width  = '0%';
+  document.getElementById('live-bar-drowsy').style.width = '0%';
+
+  showToast('⏹ Webcam stopped');
+}
+
+async function updateLiveStatus() {
+  if (!webcamRunning) return;
+  try {
+    const resp = await fetch('/webcam/status');
+    const data = await resp.json();
+    if (data.status === 'UNKNOWN') return;
+
+    const badge    = document.getElementById('live-badge');
+    const isDrowsy = data.is_drowsy;
+
+    badge.className   = 'live-badge ' + (isDrowsy ? 'drowsy' : 'alert');
+    badge.textContent = isDrowsy ? '🔴 DROWSY' : '🟢 ALERT';
+
+    document.getElementById('live-alert-pct').textContent  = data.alert_pct  + '%';
+    document.getElementById('live-drowsy-pct').textContent = data.drowsy_pct + '%';
+    document.getElementById('live-bar-alert').style.width  = data.alert_pct  + '%';
+    document.getElementById('live-bar-drowsy').style.width = data.drowsy_pct + '%';
+
+    // Alarm
+    const alarmEnabled = document.getElementById('alarm-toggle').checked;
+    if (isDrowsy) {
+      drowsyFrameCount++;
+      if (alarmEnabled && drowsyFrameCount >= ALARM_THRESHOLD) startAlarm();
+    } else {
+      drowsyFrameCount = 0;
+      stopAlarm();
+    }
+  } catch(e) {}
+}
+
+// ── Toast ───────────────────────────────────────────────────────
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ── Init ────────────────────────────────────────────────────────
+buildModelGrid();
+buildStatsTable();
+</script>
+</body>
+</html>

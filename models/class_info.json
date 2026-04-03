@@ -1,0 +1,47 @@
+{
+  "class_indices": {
+    "DROWSY": 0,
+    "NATURAL": 1
+  },
+  "index_to_label": {
+    "0": "DROWSY",
+    "1": "NATURAL"
+  },
+  "best_model": "ResNet50V2",
+  "results": {
+    "VGG16": {
+      "accuracy": 0.6049,
+      "precision": 0.5534,
+      "recall": 1.0,
+      "f1": 0.7125,
+      "auc": 0.9959
+    },
+    "MobileNetV2": {
+      "accuracy": 0.9346,
+      "precision": 0.8868,
+      "recall": 0.9931,
+      "f1": 0.937,
+      "auc": 0.9964
+    },
+    "ResNet50V2": {
+      "accuracy": 0.9831,
+      "precision": 0.9692,
+      "recall": 0.9972,
+      "f1": 0.983,
+      "auc": 0.9995
+    },
+    "DrowsyNet": {
+      "accuracy": 0.5131,
+      "precision": 0.5014,
+      "recall": 1.0,
+      "f1": 0.6679,
+      "auc": 0.8157
+    }
+  },
+  "param_counts": {
+    "VGG16": 15045185,
+    "MobileNetV2": 2981697,
+    "ResNet50V2": 24681729,
+    "DrowsyNet": 669961
+  }
+}
