@@ -40,8 +40,8 @@ Driver drowsiness is one of the leading causes of road accidents worldwide. **Dr
 
 | Model | Download |
 |-------|----------|
-| DrowsyNet Best | [⬇️ Download](https://drive.google.com/file/d/1lTHpGmQQU4Iy_Cc7O5N9y9NBBXWCCZGv/view?usp=drive_link) |
-| DrowsyNet Final | [⬇️ Download](https://drive.google.com/file/d/1pnelolXuKlQQftlX8LtGDL1QH39PtrNs/view?usp=drive_link) |
+| DrowsyNet Best | [⬇️ Download](https://drive.google.com/file/d/1BQLOynetskd9MihkAFQNnYJ_08DVv_4w/view?usp=drive_link) |
+| DrowsyNet Final | [⬇️ Download](https://drive.google.com/file/d/1Mf_nyCxcIkSIXSuwqkasatwRZq5f8YmV/view?usp=drive_link) |
 | MobileNetV2 Final | [⬇️ Download](https://drive.google.com/file/d/1eBLKSJCYbO3aqF23nf21O2rhTy3-kOAV/view?usp=drive_link) |
 | MobileNetV2 Best | [⬇️ Download](https://drive.google.com/file/d/1KhCjVVZWvyi161Nn7PXI2pR2FUPKg9fp/view?usp=drive_link) |
 | ResNet50V2 Final | [⬇️ Download](https://drive.google.com/file/d/1fByi8snxUoelBp5EnmFR1xIcIZkzL3xE/view?usp=drive_link) |
