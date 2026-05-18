@@ -52,15 +52,19 @@ Driver drowsiness is one of the leading causes of road accidents worldwide. **Dr
 ---
 
 ## 🚀 How To Run
-```bash
-# Install dependencies
-pip install flask opencv-python tensorflow numpy
 
-# Run the app
+1. Clone the repo and open the folder
+2. Create a `models/` folder inside it
+3. Download all model files from the **Model Downloads** section and place them in `models/`
+4. Install dependencies:
+```bash
+pip install flask opencv-python tensorflow numpy
+```
+5. Run the app:
+```bash
 python app.py
 ```
-
-Then open your browser at **http://localhost:5000**
+6. Open **http://localhost:5000** in your browser
 
 ---
 
